@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
@@ -31,9 +31,31 @@ def get_db():
         db.close()
 
 # ==========================================
+# WEBSOCKET MANAGER (Tempo Real)
+# ==========================================
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_json(message)
+
+manager = ConnectionManager()
+
+
+# ==========================================
 # SCHEMAS (Validações de entrada e saída)
 # ==========================================
-
+class PartidaUpdateStatus(BaseModel):
+    status: str
 class TimeCreate(BaseModel):
     nome: str
     cidade: str | None = None
@@ -84,7 +106,7 @@ class PartidaResponse(BaseModel):
 
 class EventoCreate(BaseModel):
     partida_id: int
-    periodo: str | None = None  # Correção: Agora aceita vazio sem travar
+    periodo: str | None = None  
     minuto: int = 0
     segundo: int = 0
     jogador_id: int
@@ -97,7 +119,7 @@ class EventoCreate(BaseModel):
 class EventoResponse(BaseModel):
     id: int
     partida_id: int
-    periodo: str | None = None  # Correção: Agora aceita vazio sem travar
+    periodo: str | None = None  
     minuto: int
     segundo: int
     jogador_id: int
@@ -148,6 +170,16 @@ def listar_jogadores(db: Session = Depends(get_db)):
     return jogadores
 
 # --- PARTIDAS ---
+@app.put("/partidas/{partida_id}/status", response_model=PartidaResponse)
+def atualizar_status_partida(partida_id: int, status_update: PartidaUpdateStatus, db: Session = Depends(get_db)):
+    partida = db.query(models.Partida).filter(models.Partida.id == partida_id).first()
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida não encontrada")
+    
+    partida.status = status_update.status
+    db.commit()
+    db.refresh(partida)
+    return partida
 @app.post("/partidas", response_model=PartidaResponse)
 def criar_partida(partida: PartidaCreate, db: Session = Depends(get_db)):
     nova_partida = models.Partida(
@@ -191,7 +223,18 @@ def registrar_evento(evento: EventoCreate, db: Session = Depends(get_db)):
 def listar_eventos_da_partida(partida_id: int, db: Session = Depends(get_db)):
     return db.query(models.Evento).filter(models.Evento.partida_id == partida_id).all()
 
-# Nova rota para puxar todos os eventos e alimentar as estatísticas do campeonato
 @app.get("/eventos", response_model=List[EventoResponse])
 def listar_todos_eventos(db: Session = Depends(get_db)):
     return db.query(models.Evento).all()
+
+# --- WEBSOCKET ROTA ---
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Escuta dados recebidos do front e repassa para todo mundo conectado
+            data = await websocket.receive_json()
+            await manager.broadcast(data)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
