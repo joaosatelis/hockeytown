@@ -1,6 +1,3 @@
-# ==========================================
-# SCHEMAS (Validações de entrada e saída)
-# ==========================================
 class PartidaUpdateStatus(BaseModel):
     status: str
 class TimeCreate(BaseModel):

@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing import List
 from pydantic import BaseModel
+import schemas
 import models
 from database import engine, SessionLocal, Base
 
@@ -49,8 +50,6 @@ class ConnectionManager:
             await connection.send_json(message)
 
 manager = ConnectionManager()
-
-
 # ==========================================
 # SCHEMAS (Validações de entrada e saída)
 # ==========================================
