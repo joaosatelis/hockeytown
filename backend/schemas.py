@@ -1,5 +1,8 @@
+from pydantic import BaseModel
+
 class PartidaUpdateStatus(BaseModel):
     status: str
+
 class TimeCreate(BaseModel):
     nome: str
     cidade: str | None = None

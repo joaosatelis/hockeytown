@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing import List
-from pydantic import BaseModel
 import schemas
 import models
 from database import engine, SessionLocal, Base
@@ -50,108 +49,28 @@ class ConnectionManager:
             await connection.send_json(message)
 
 manager = ConnectionManager()
-# ==========================================
-# SCHEMAS (Validações de entrada e saída)
-# ==========================================
-class PartidaUpdateStatus(BaseModel):
-    status: str
-class TimeCreate(BaseModel):
-    nome: str
-    cidade: str | None = None
-    logo_url: str | None = None
-
-class TimeResponse(BaseModel):
-    id: int
-    nome: str
-    cidade: str | None = None
-    logo_url: str | None = None
-
-    class Config:
-        from_attributes = True
-
-class JogadorCreate(BaseModel):
-    nome: str
-    numero_camisa: int
-    posicao: str
-    time_id: int
-
-class JogadorResponse(BaseModel):
-    id: int
-    nome: str
-    numero_camisa: int
-    posicao: str
-    time_id: int
-
-    class Config:
-        from_attributes = True
-
-class PartidaCreate(BaseModel):
-    time_casa_id: int
-    time_visitante_id: int
-    placar_casa: int
-    placar_visitante: int
-    status: str = "Finalizado"
-
-class PartidaResponse(BaseModel):
-    id: int
-    time_casa_id: int
-    time_visitante_id: int
-    placar_casa: int
-    placar_visitante: int
-    status: str
-
-    class Config:
-        from_attributes = True
-
-class EventoCreate(BaseModel):
-    partida_id: int
-    periodo: str | None = None  
-    minuto: int = 0
-    segundo: int = 0
-    jogador_id: int
-    tipo: str
-    assistencia1_id: int | None = None
-    assistencia2_id: int | None = None
-    nome_penalidade: str | None = None
-    minutos_penalidade: int | None = None
-
-class EventoResponse(BaseModel):
-    id: int
-    partida_id: int
-    periodo: str | None = None  
-    minuto: int
-    segundo: int
-    jogador_id: int
-    tipo: str
-    assistencia1_id: int | None = None
-    assistencia2_id: int | None = None
-    nome_penalidade: str | None = None
-    minutos_penalidade: int | None = None
-
-    class Config:
-        from_attributes = True
 
 # ==========================================
 # ROTAS DA API
 # ==========================================
 
 # --- TIMES ---
-@app.post("/times", response_model=TimeResponse)
-def criar_time(time: TimeCreate, db: Session = Depends(get_db)):
+@app.post("/times", response_model=schemas.TimeResponse)
+def criar_time(time: schemas.TimeCreate, db: Session = Depends(get_db)):
     novo_time = models.Time(nome=time.nome, cidade=time.cidade, logo_url=time.logo_url)
     db.add(novo_time)
     db.commit()
     db.refresh(novo_time)
     return novo_time
 
-@app.get("/times", response_model=List[TimeResponse])
+@app.get("/times", response_model=List[schemas.TimeResponse])
 def listar_times(db: Session = Depends(get_db)):
     times = db.query(models.Time).all()
     return times
 
 # --- JOGADORES ---
-@app.post("/jogadores", response_model=JogadorResponse)
-def criar_jogador(jogador: JogadorCreate, db: Session = Depends(get_db)):
+@app.post("/jogadores", response_model=schemas.JogadorResponse)
+def criar_jogador(jogador: schemas.JogadorCreate, db: Session = Depends(get_db)):
     novo_jogador = models.Jogador(
         nome=jogador.nome, 
         numero_camisa=jogador.numero_camisa, 
@@ -163,14 +82,14 @@ def criar_jogador(jogador: JogadorCreate, db: Session = Depends(get_db)):
     db.refresh(novo_jogador)
     return novo_jogador
 
-@app.get("/jogadores", response_model=List[JogadorResponse])
+@app.get("/jogadores", response_model=List[schemas.JogadorResponse])
 def listar_jogadores(db: Session = Depends(get_db)):
     jogadores = db.query(models.Jogador).all()
     return jogadores
 
 # --- PARTIDAS ---
-@app.put("/partidas/{partida_id}/status", response_model=PartidaResponse)
-def atualizar_status_partida(partida_id: int, status_update: PartidaUpdateStatus, db: Session = Depends(get_db)):
+@app.put("/partidas/{partida_id}/status", response_model=schemas.PartidaResponse)
+def atualizar_status_partida(partida_id: int, status_update: schemas.PartidaUpdateStatus, db: Session = Depends(get_db)):
     partida = db.query(models.Partida).filter(models.Partida.id == partida_id).first()
     if not partida:
         raise HTTPException(status_code=404, detail="Partida não encontrada")
@@ -179,8 +98,9 @@ def atualizar_status_partida(partida_id: int, status_update: PartidaUpdateStatus
     db.commit()
     db.refresh(partida)
     return partida
-@app.post("/partidas", response_model=PartidaResponse)
-def criar_partida(partida: PartidaCreate, db: Session = Depends(get_db)):
+
+@app.post("/partidas", response_model=schemas.PartidaResponse)
+def criar_partida(partida: schemas.PartidaCreate, db: Session = Depends(get_db)):
     nova_partida = models.Partida(
         time_casa_id=partida.time_casa_id,
         time_visitante_id=partida.time_visitante_id,
@@ -193,14 +113,14 @@ def criar_partida(partida: PartidaCreate, db: Session = Depends(get_db)):
     db.refresh(nova_partida)
     return nova_partida
 
-@app.get("/partidas", response_model=List[PartidaResponse])
+@app.get("/partidas", response_model=List[schemas.PartidaResponse])
 def listar_partidas(db: Session = Depends(get_db)):
     partidas = db.query(models.Partida).all()
     return partidas
 
 # --- EVENTOS DA SÚMULA ---
-@app.post("/eventos", response_model=EventoResponse)
-def registrar_evento(evento: EventoCreate, db: Session = Depends(get_db)):
+@app.post("/eventos", response_model=schemas.EventoResponse)
+def registrar_evento(evento: schemas.EventoCreate, db: Session = Depends(get_db)):
     novo_evento = models.Evento(
         partida_id=evento.partida_id,
         periodo=evento.periodo,
@@ -218,11 +138,11 @@ def registrar_evento(evento: EventoCreate, db: Session = Depends(get_db)):
     db.refresh(novo_evento)
     return novo_evento
 
-@app.get("/eventos/partida/{partida_id}", response_model=List[EventoResponse])
+@app.get("/eventos/partida/{partida_id}", response_model=List[schemas.EventoResponse])
 def listar_eventos_da_partida(partida_id: int, db: Session = Depends(get_db)):
     return db.query(models.Evento).filter(models.Evento.partida_id == partida_id).all()
 
-@app.get("/eventos", response_model=List[EventoResponse])
+@app.get("/eventos", response_model=List[schemas.EventoResponse])
 def listar_todos_eventos(db: Session = Depends(get_db)):
     return db.query(models.Evento).all()
 
