@@ -54,6 +54,48 @@ manager = ConnectionManager()
 # ROTAS DA API
 # ==========================================
 
+# --- TREINADORES ---
+@app.post("/treinadores", response_model=schemas.TreinadorResponse)
+def criar_treinador(treinador: schemas.TreinadorCreate, db: Session = Depends(get_db)):
+    novo_treinador = models.Treinador(
+        nome=treinador.nome,
+        cargo=treinador.cargo,
+        time_id=treinador.time_id
+    )
+    db.add(novo_treinador)
+    db.commit()
+    db.refresh(novo_treinador)
+    return novo_treinador
+
+@app.get("/treinadores", response_model=List[schemas.TreinadorResponse])
+def listar_treinadores(db: Session = Depends(get_db)):
+    return db.query(models.Treinador).all()
+
+# --- ÁRBITROS ---
+@app.post("/arbitros", response_model=schemas.ArbitroResponse)
+def criar_arbitro(arbitro: schemas.ArbitroCreate, db: Session = Depends(get_db)):
+    novo_arbitro = models.Arbitro(nome=arbitro.nome, funcao=arbitro.funcao)
+    db.add(novo_arbitro)
+    db.commit()
+    db.refresh(novo_arbitro)
+    return novo_arbitro
+
+@app.get("/arbitros", response_model=List[schemas.ArbitroResponse])
+def listar_arbitros(db: Session = Depends(get_db)):
+    return db.query(models.Arbitro).all()
+
+# --- MESÁRIOS ---
+@app.post("/mesarios", response_model=schemas.MesarioResponse)
+def criar_mesario(mesario: schemas.MesarioCreate, db: Session = Depends(get_db)):
+    novo_mesario = models.Mesario(nome=mesario.nome, funcao=mesario.funcao)
+    db.add(novo_mesario)
+    db.commit()
+    db.refresh(novo_mesario)
+    return novo_mesario
+
+@app.get("/mesarios", response_model=List[schemas.MesarioResponse])
+def listar_mesarios(db: Session = Depends(get_db)):
+    return db.query(models.Mesario).all()
 # --- TIMES ---
 @app.post("/times", response_model=schemas.TimeResponse)
 def criar_time(time: schemas.TimeCreate, db: Session = Depends(get_db)):

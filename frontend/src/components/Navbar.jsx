@@ -22,6 +22,7 @@ function Navbar() {
       <Link to="/" style={linkStyle}>🏠 Home</Link>
       <Link to="/gestao" style={linkStyle}>📋 Mesa de Controle</Link>
       <Link to="/telao" style={linkStyle}>📺 Telão</Link>
+      <Link to="/cadastro" style={linkStyle}> Cadastros</Link>
       <span style={{ color: '#00C9DB', marginLeft: 'auto', fontWeight: 'bold' }}>HOCKEYTOWN CWB</span>
     </nav>
   );
